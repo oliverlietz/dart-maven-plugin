@@ -192,11 +192,11 @@ public class Dart2JsMojo extends AbstractDartMojo {
 	/**
 	 * The directory to place the js files after compiling.
 	 * <p/>
-	 * If not specified the default is '${project.build.directory}/dart/dart2js'.
+	 * If not specified the default is '${project.build.directory}/generated-sources/dart/dart2js'.
 	 *
 	 * @since 1.0
 	 */
-	@Parameter(property = "dart.outputDirectory", defaultValue = "${project.build.directory}/dart/dart2js", required = true)
+	@Parameter(property = "dart.outputDirectory", defaultValue = "${project.build.directory}/generated-sources/dart/dart2js", required = true)
 	private File outputDirectory;
 
 	/**
