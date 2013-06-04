@@ -76,19 +76,17 @@ public class TestMojo extends DartMojo {
 
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
-
-		final Set<File> dartPackageRoots = findDartPackageRoots();
-
-		processPubDependencies(dartPackageRoots);
-
 		if (isSkipTests()) {
 			getLog().info("Tests are skipped.");
 		} else {
-			executeTests(dartPackageRoots);
+            // TODO src/main/dart/test vs. src/test/dart
+            final File testDirectory = new File(sourceDirectory, "test");
+            getLog().info("running tests in " + testDirectory.getAbsolutePath());
+			executeTests(testDirectory);
 		}
 	}
 
-	private void executeTests(final Set<File> dartPackageRoots) throws MojoExecutionException, MojoFailureException {
+	private void executeTests(final File testDirectory) throws MojoExecutionException, MojoFailureException {
 
 		final Commandline cl = createBaseCommandline();
 
@@ -97,7 +95,7 @@ public class TestMojo extends DartMojo {
 		final StreamConsumer output = new WriterStreamConsumer(new OutputStreamWriter(System.out));
 		final StreamConsumer error = new WriterStreamConsumer(new OutputStreamWriter(System.err));
 
-		final Set<File> testSources = computeTestToRun(dartPackageRoots);
+		final Set<File> testSources = computeTestToRun(testDirectory);
 
 		System.out.println();
 		System.out.println();
@@ -122,9 +120,7 @@ public class TestMojo extends DartMojo {
 				if (getLog().isDebugEnabled()) {
 					getLog().debug("test return code: " + returnValue);
 				}
-				if (returnValue != 0 && returnValue != 255) {
-					throw new MojoExecutionException("Test fail returned error code " + returnValue);
-				} else if (returnValue != 255) {
+				if (returnValue != 0) {
 					fail = true;
 				}
 
@@ -168,33 +164,29 @@ public class TestMojo extends DartMojo {
 
 	public Set<String> getIncludes() {
 		if (includes.isEmpty()) {
-			return ImmutableSet.copyOf(Arrays.asList(new String[] {"test/**/*.dart"}));
+			return ImmutableSet.copyOf(Arrays.asList(new String[] {"**/*.dart"})); // TODO: *_test.dart?
 		}
 		return includes;
 	}
 
 	protected Set<String> getExcludes() {
 		if (excludes.isEmpty()) {
-			return ImmutableSet.copyOf(Arrays.asList(new String[] {"test/**/packages/**"}));
+			return ImmutableSet.copyOf(Arrays.asList(new String[] {"**/packages/**"}));
 		}
 		return excludes;
 	}
 
-	private Set<File> computeTestToRun(final Set<File> packageRoots)
-			throws MojoExecutionException {
-
+	private Set<File> computeTestToRun(final File testDirectory)
+        throws MojoExecutionException {
 		final Set<File> testToRun = new HashSet<>();
-		for (final File packageRoot : packageRoots) {
-			testToRun.addAll(scanForTests(packageRoot, getIncludes(), getExcludes()));
-		}
-
+        testToRun.addAll(scanForTests(testDirectory, getIncludes(), getExcludes()));
 		return testToRun;
 	}
 
-	private Set<File> scanForTests(File sourceDir, Set<String> sourceIncludes, Set<String> sourceExcludes) {
+	private Set<File> scanForTests(File testDirectory, Set<String> sourceIncludes, Set<String> sourceExcludes) {
 		DirectoryScanner ds = new DirectoryScanner();
 		ds.setFollowSymlinks(true);
-		ds.setBasedir(sourceDir);
+		ds.setBasedir(testDirectory);
 
 		String[] includes;
 		if (sourceIncludes.isEmpty()) {
@@ -223,7 +215,7 @@ public class TestMojo extends DartMojo {
 
 		if (potentialSources != null) {
 			for (String potentialSource : potentialSources) {
-				matchingSources.add(new File(sourceDir, potentialSource));
+				matchingSources.add(new File(testDirectory, potentialSource));
 			}
 		}
 

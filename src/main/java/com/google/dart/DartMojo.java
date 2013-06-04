@@ -2,7 +2,6 @@ package com.google.dart;
 
 import java.io.File;
 import java.io.OutputStreamWriter;
-import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -23,7 +22,7 @@ import com.google.dart.util.OsUtil;
  * @author Daniel Zwicker
  */
 @Mojo(name = "dart")
-public class DartMojo extends PubMojo {
+public class DartMojo extends AbstractDartMojo {
 
 	/**
 	 * Insert runtime type checks and enable assertions (checked mode).
@@ -64,12 +63,12 @@ public class DartMojo extends PubMojo {
 	private final static String ARGUMENT_USE_SCRIPT_SNAPSHOT = "--use_script_snapshot=";
 
 	/**
-	 * Skip the execution of dart2js.
+	 * the Dart script file to run
 	 *
 	 * @since 2.0
 	 */
-	@Parameter(property = "script")
-	private File script;
+	@Parameter(property = "script", required = true)
+	protected String script;
 
 	/**
 	 * Insert runtime type checks and enable assertions (checked mode).
@@ -78,14 +77,6 @@ public class DartMojo extends PubMojo {
 	 */
 	@Parameter(defaultValue = "false", property = "dart.checkedMode")
 	private boolean checkedMode;
-
-	/**
-	 * Where to find packages, that is, "package:..." imports.
-	 *
-	 * @since 2.0
-	 */
-	@Parameter(defaultValue = "packages", property = "dart.packagePath")
-	private String packagePath;
 
 	/**
 	 * enables debugging and listens on specified port for debugger connections
@@ -123,19 +114,8 @@ public class DartMojo extends PubMojo {
 	@Parameter(property = "dart.useScriptSnapshot")
 	private String useScriptSnapshot;
 
-	/**
-	 * Set this to 'true' to skip running dart's packagemanager pub.
-	 *
-	 * @since 2.0
-	 */
-	@Parameter(defaultValue = "false", property = "dart.pup.skip")
-	private boolean skipPub;
-
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
-
-		final Set<File> dartPackageRoots = findDartPackageRoots();
-		processPubDependencies(dartPackageRoots);
 		executeDart();
 	}
 
@@ -143,9 +123,9 @@ public class DartMojo extends PubMojo {
 
 		final Commandline cl = createBaseCommandline();
 
-		if (script == null) {
-			throw new NullPointerException("Script is required but is null.");
-		}
+        File script = new File(sourceDirectory, this.script);
+        getLog().info("Dart script to execute: " + script.getAbsolutePath());
+
 		if (!script.exists() || !script.isFile()) {
 			throw new IllegalArgumentException("Script must be a file. scripte=" + script.getAbsolutePath());
 		}
@@ -209,7 +189,7 @@ public class DartMojo extends PubMojo {
 			cl.createArg().setValue(ARGUMENT_USE_SCRIPT_SNAPSHOT + useScriptSnapshot);
 		}
 
-        cl.createArg().setValue(buildPackagePath());
+        cl.createArg().setValue(ARGUMENT_PACKAGE_PATH + buildPackagePath());
 
 		if (getLog().isDebugEnabled()) {
 			getLog().debug("Base dart command: " + cl.toString());
@@ -222,24 +202,12 @@ public class DartMojo extends PubMojo {
 		checkDartSdk();
 		if (!getDartExecutable().canExecute()) {
 			throw new MojoExecutionException("Dart not executable! Configuration error for dartSdk? dartSdk="
-					+ getDartSdk().getAbsolutePath());
+					+ dartSdk.getAbsolutePath());
 		}
 	}
 
 	protected File getDartExecutable() {
-		return new File(getDartSdk(), "bin/dart" + (OsUtil.isWindows() ? ".exe" : ""));
-	}
-
-    protected String buildPackagePath() {
-        StringBuilder sb = new StringBuilder(ARGUMENT_PACKAGE_PATH);
-        sb.append(new File(sourceDirectory, packagePath).getAbsolutePath());
-        sb.append(File.separator);
-        return sb.toString();
-    }
-
-	@Override
-	public boolean isPubSkipped() {
-		return skipPub;
+		return new File(dartSdk, "bin/dart" + (OsUtil.isWindows() ? ".exe" : ""));
 	}
 
 	protected boolean isCheckedMode() {

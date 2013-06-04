@@ -3,7 +3,6 @@ package com.google.dart;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -29,20 +28,17 @@ public class DartWebMojo extends DartMojo {
 
     private final static String ARGUMENT_OUT = "--out";
 
-    @Parameter(property = "output", defaultValue = "${project.build.directory}/generated-sources/dwc")
+    @Parameter(property = "output", defaultValue = "${project.build.directory}/generated-sources/dart/dwc")
     private File outputDir;
 
     @Parameter(property = "htmlFile", defaultValue = "web/index.html")
     private String htmlFile;
 
-    @Parameter(property = "dwcScript", defaultValue = "packages/web_ui/dwc.dart")
-    private String dwcScript;
+    @Parameter(property = "script", defaultValue = "packages/web_ui/dwc.dart", required = true)
+    protected String script;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-
-        final Set<File> dartPackageRoots = findDartPackageRoots();
-        processPubDependencies(dartPackageRoots);
 
         checkDart();
         String dartPath = getDartExecutable().getAbsolutePath();
@@ -54,9 +50,9 @@ public class DartWebMojo extends DartMojo {
         final Commandline cl = new Commandline();
         cl.setExecutable(dartPath);
 
-	    cl.createArg().setValue(buildPackagePath());
+	    cl.createArg().setValue(ARGUMENT_PACKAGE_PATH + buildPackagePath());
 
-        File dwc = new File(sourceDirectory, dwcScript);
+        File dwc = new File(sourceDirectory, script);
         if( !dwc.exists() )
             throw new MojoExecutionException("The dwc script does not exist here: " + dwc.getAbsolutePath());
 

@@ -2,10 +2,10 @@ package com.google.dart;
 
 import java.io.File;
 import java.io.OutputStreamWriter;
-import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.codehaus.plexus.util.cli.CommandLineException;
@@ -21,12 +21,16 @@ import com.google.dart.util.OsUtil;
  *
  * @author Daniel Zwicker
  */
-@Mojo(name = "pub")
+@Mojo(name = "pub", defaultPhase = LifecyclePhase.VALIDATE)
 public class PubMojo extends AbstractDartMojo {
 
 	private final static String COMMAND_INSTALL = "install";
 
 	private final static String COMMAND_UPDATE = "update";
+
+    // TODO pub publish
+
+    // TODO pub deploy
 
 	/**
 	 * Skip the execution of dart2js.
@@ -38,11 +42,10 @@ public class PubMojo extends AbstractDartMojo {
 
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
-		final Set<File> dartPackageRoots = findDartPackageRoots();
-		processPubDependencies(dartPackageRoots);
+        executePub(sourceDirectory);
 	}
 
-	protected void processPubDependencies(final Set<File> dartPackageRoots) throws MojoExecutionException {
+	protected void executePub(final File sourceDirectory) throws MojoExecutionException {
 
 		if (isPubSkipped()) {
 			getLog().info("Updating dependencies (pub packagemanager) is skipped.");
@@ -54,7 +57,6 @@ public class PubMojo extends AbstractDartMojo {
 
 		if (getLog().isDebugEnabled()) {
 			getLog().debug("Using pub '" + pubPath + "'.");
-			getLog().debug("basedir: " + getBasedir());
 		}
 
 		final StreamConsumer output = new WriterStreamConsumer(new OutputStreamWriter(System.out));
@@ -73,9 +75,8 @@ public class PubMojo extends AbstractDartMojo {
 		System.out.println();
 
 		try {
-			for (final File dartPackageRoot : dartPackageRoots) {
-				getLog().info("Run pub for package root: " + relativePath(dartPackageRoot));
-				cl.setWorkingDirectory(dartPackageRoot);
+				getLog().info("Run pub for package root: " + relativePath(sourceDirectory));
+				cl.setWorkingDirectory(sourceDirectory);
 				if (getLog().isDebugEnabled()) {
 					getLog().debug("Execute pub command: " + cl.toString());
 				}
@@ -86,7 +87,6 @@ public class PubMojo extends AbstractDartMojo {
 				if (returnCode != 0) {
 					throw new MojoExecutionException("Pub returned error code " + returnCode);
 				}
-			}
 		} catch (CommandLineException e) {
 			throw new MojoExecutionException("Unable to execute pub", e);
 		}
@@ -99,12 +99,12 @@ public class PubMojo extends AbstractDartMojo {
 		checkDartSdk();
 		if (!getPubExecutable().canExecute()) {
 			throw new MojoExecutionException("Pub not executable! Configuration error for dartSdk? dartSdk="
-					+ getDartSdk().getAbsolutePath());
+					+ dartSdk.getAbsolutePath());
 		}
 	}
 
 	private File getPubExecutable() {
-		return new File(getDartSdk(), "bin/pub" + (OsUtil.isWindows() ? ".bat" : ""));
+		return new File(dartSdk, "bin/pub" + (OsUtil.isWindows() ? ".bat" : ""));
 	}
 
 	public boolean isPubSkipped() {
